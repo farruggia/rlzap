@@ -1,6 +1,6 @@
 # RLZAP
 
-This project is an implementation of the compressed relative index strategy outlined in the paper "RLZAP: Relative Lempel-Ziv with Adaptive Pointers".
+This project is an implementation of the compressed relative index strategy outlined in the paper "RLZAP: Relative Lempel-Ziv with Adaptive Pointers". The dataset used for the experiments is available [here](http://acube.di.unipi.it/rlzap-dataset/)
 
 ## Compiling
 
@@ -42,6 +42,7 @@ To display characters ranging from the 50th to the 100th:
 ```
 
 To relatively compress DLCP files instead, just use the `-A` option:
+
 ```
 ./index_build dlcp_input dlcp_reference dlcp_input.rlzap -A dlcp32
 ```
