@@ -177,7 +177,7 @@ int main(int argc, char **argv)
          ("Alphabet. Choices: " + options_string<Alphabets>()).c_str())
         ("output-file,o", po::value<string>()->required(),
          "Output file.")
-        ("parser,k", po::value<string>()->default_value(parser_to_name(Parser::rlzap_parameter)),
+        ("parser,k", po::value<string>()->default_value(parser_to_name(Parser::rlzap_parameter).c_str()),
           ("Select a parsing strategy. Choices: " + parser_choices()).c_str())
         ("look-ahead,L", po::value<size_t>()->default_value(30UL),
          "Amount of look-ahead symbols.")
@@ -212,15 +212,15 @@ int main(int argc, char **argv)
     string alphabet   = vm["alphabet"].as<string>();
     string outfile    = vm["output-file"].as<string>();
     Parser parser     = name_to_parser(vm["parser"].as<string>());
-    size_t E_L        = vm["edit-distance"].as<size_t>();
-    size_t P_T        = vm["phrase-threshold"].as<size_t>();
+    size_t E_L        = vm["look-ahead"].as<size_t>();
+    size_t P_T        = vm["explicit-len"].as<size_t>();
     std::vector<std::string> vtypes {{
       alphabet,
-      vm["literal-keeper"].as<string>(),
-      vm["literal-length"].as<string>(),
-      vm["subphrase-length"].as<string>(),
-      vm["pointer-length"].as<string>(),
-      vm["literal-sample"].as<string>()
+      vm["literal-strategy"].as<string>(),
+      vm["max-lit"].as<string>(),
+      vm["delta-bits"].as<string>(),
+      vm["explicit-bits"].as<string>(),
+      vm["sample-int"].as<string>()
     }};
 
     // Check
