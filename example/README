@@ -1,0 +1,2 @@
+This directory illustrates how to use RLZAP as a library.
+It includes a simple source file which shows how to invoke the API and a sample CMakeLists.txt for compiling the project.
