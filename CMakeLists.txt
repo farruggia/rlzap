@@ -21,11 +21,12 @@ include(ReleaseDefault)
 include(submodules)
 
 # Compilation flags (RELEASE by default)
+# -mno-avx is required for GCC in Mac OS. Should probably detect it.
 set(CMAKE_CXX_FLAGS_FASTDEB "-g -Wall -O3 -ftemplate-depth=2048")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -O0 -ftemplate-depth=2048")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -ffast-math -funroll-loops -DNDEBUG -ftemplate-depth=2048")
-set(CMAKE_CXX_FLAGS_RELEASE_LTO "-O4 -march=native -ffast-math -funroll-loops -DNDEBUG -ftemplate-depth=2048")
-set(CMAKE_CXX_FLAGS_TEST "-Wall -O3 -march=native -ffast-math -funroll-loops -fsanitize=address -DNDEBUG -ftemplate-depth=2048")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mno-avx -ffast-math -funroll-loops -DNDEBUG -ftemplate-depth=2048")
+set(CMAKE_CXX_FLAGS_RELEASE_LTO "-O4 -march=native -mno-avx -ffast-math -funroll-loops -DNDEBUG -ftemplate-depth=2048")
+set(CMAKE_CXX_FLAGS_TEST "-Wall -O3 -march=native -mno-avx -ffast-math -funroll-loops -fsanitize=address -DNDEBUG -ftemplate-depth=2048")
 
 # Main library include directories
 set(RLZ_LIBRARY_DIRS "")
