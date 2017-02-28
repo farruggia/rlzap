@@ -58,11 +58,17 @@ namespace rlz { namespace lcp {
     using SignedAlphabet = rlz::alphabet::SignLcp<Alphabet>;
     using SignSymbol     = typename SignedAlphabet::Symbol;
 
-    using DiffIt = rlz::differential_iterator<InputIt, SignSymbol>;
-    using Dumper = rlz::utils::iterator_dumper<DiffIt>;
+    using DiffReIt = rlz::differential_iterator<ReIt, SignSymbol>;
+    using ReDumper = rlz::utils::iterator_dumper<DiffReIt>;
+    using DiffInIt = rlz::differential_iterator<InputIt, SignSymbol>;
+    using InDumper = rlz::utils::iterator_dumper<DiffInIt>;
 
-    Dumper ref_dumper{DiffIt(reference_begin), DiffIt(reference_end)},
-           input_dumper{DiffIt(input_begin), DiffIt(input_end)};
+    ReDumper ref_dumper{
+      DiffReIt(reference_begin), DiffReIt(reference_end)
+    };
+    InDumper input_dumper{
+      DiffInIt(input_begin), DiffInIt(input_end)
+    };
 
     auto matches = std::get<0>(
       rlz::get_relative_matches<SignedAlphabet>(ref_dumper, input_dumper)
