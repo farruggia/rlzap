@@ -38,7 +38,12 @@ if (NOT SDSL_INCLUDE_DIRS)
   if (RLZ_USE_EXTERNAL_SDSL)
     include(FindPkgConfig)
     pkg_search_module(SDSL REQUIRED sdsl-lite)
-    include_directories("${SDSL_INCLUDE_DIRS}")
+    # Something weird is going on here. Some versions of cmake seem to set
+    # SDSL_INCLUDE_DIRS, while others don't. Alternatively this could be a
+    # difference between versions of pkg-config or between Linux and Mac.
+    if (SDSL_INCLUDE_DIRS)
+      include_directories("${SDSL_INCLUDE_DIRS}")
+    endif (SDSL_INCLUDE_DIRS)
   elseif (NOT TARGET sdsl)
     add_subdirectory("ext_libs/sdsl")
     set(SDSL_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ext_libs/sdsl")
