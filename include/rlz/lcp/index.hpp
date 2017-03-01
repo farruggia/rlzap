@@ -211,8 +211,7 @@ public:
       Index idx;
       idx.literals   = lit_build.get();
       idx.parse      = parse_build.get();
-      idx.source     = s;
-      idx.get_target = target_get<ParseKeeper::ptr_size>(idx.source.size());
+      idx.set_source(s);
       return idx;
     }
   };
@@ -220,9 +219,6 @@ private:
   template <typename ParseIter, typename LiteralLen, typename LiteralAccess>
   std::tuple<std::size_t, iter, iter> get_iterators(ParseIter parse_iter, LiteralLen ll_iter, LiteralAccess la_iter) const
   {
-    // iterator(
-    //   LitIt lit_begin, LitIt lit_end, RefIt ref_begin, RefIt ref_end, std::size_t pos, T prev_ref
-    // )
     if (parse_iter == parse.get_iterator_end()) {
       return std::make_tuple(
         this->size(), iter(), iter()
@@ -238,23 +234,22 @@ private:
     auto target = get_target(phrase_start + lit_len, offset);
 
     auto ref_begin = std::next(source.begin(), target);
-    auto ref_end   = std::next(ref_begin, phrase_len - lit_len);
-
+    auto copy_len  = phrase_len - lit_len;
 
     Symbol prev_ref, prev_source;
 
     if (lit_begin == lit_end) {
       prev_ref = prev_source = *ref_begin;
-    } else if (ref_begin != ref_end) {
-      assert(std::distance(source.begin(), ref_end) <= source.size());
+    } else if (copy_len > 0) {
+      assert(copy_len <= source.size());
       prev_ref    = ref_begin == source.begin() ? Symbol{} : *std::prev(ref_begin);
       prev_source = *std::prev(lit_end);
     }
 
     return std::make_tuple(
       phrase_start,
-      iter(lit_begin, lit_end, ref_begin, ref_end, 0UL, prev_source, prev_ref),
-      iter(lit_begin, lit_end, ref_begin, ref_end, phrase_len, prev_source, prev_ref)
+      iter(lit_begin, lit_end, ref_begin, 0UL, copy_len, prev_source, prev_ref),
+      iter(lit_begin, lit_end, ref_begin, phrase_len, copy_len, prev_source, prev_ref)
     );
   }
 };

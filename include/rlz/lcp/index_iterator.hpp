@@ -42,21 +42,26 @@ public:
   iterator() 
     : iterator(
         impl::construct{}.get<LitIt>(), impl::construct{}.get<LitIt>(),
-        impl::construct{}.get<RefIt>(), impl::construct{}.get<RefIt>(),
-        0UL, T{}, T{}
+        impl::construct{}.get<RefIt>(), 0UL, 0UL, T{}, T{}
       )
   { }
 
   iterator(
-    LitIt lit_begin, LitIt lit_end, RefIt ref_begin, RefIt ref_end, std::size_t pos,
+    LitIt lit_begin, LitIt lit_end, RefIt ref_begin, std::size_t pos, std::size_t copy_len,
     T last_lit, T prev_ref
   )
-    : lit_begin(lit_begin), lit_end(lit_end), ref_begin(ref_begin), ref_end(ref_end),
-      lits(std::distance(lit_begin, lit_end)), copy_len(std::distance(ref_begin, ref_end)),
-      last_lit(last_lit), prev_ref(prev_ref), pos(pos)
+    : lit_begin(lit_begin), lit_end(lit_end), ref_begin(ref_begin),
+      lits(std::distance(lit_begin, lit_end)), copy_len(copy_len),
+      last_lit(last_lit), prev_ref(prev_ref), pos(pos),
+       ref_it(ref_begin), displace(0)
   {
     assert(pos <= lits + copy_len);
   }
+
+  iterator(RefIt ref_begin, std::size_t end_pos, std::size_t copy_len)
+    : iterator(LitIt{}, LitIt{}, ref_begin, end_pos, copy_len, T{}, T{})
+  { }
+
 
 private:
 
@@ -97,22 +102,33 @@ private:
     return static_cast<diff_t>(other.pos) - static_cast<diff_t>(pos);
   }
 
+  void update_displace() const
+  {
+    if (pos >= lits) {
+      auto old_displace = displace;
+      displace = pos - lits;
+      std::advance(ref_it, displace - old_displace);      
+    }
+  }
+
   const T &dereference() const
   {
     if (pos < lits) {
       Val = *std::next(lit_begin, pos);
     } else {
-      auto displace = pos - lits;
-      Val = last_lit + *std::next(ref_begin, displace) - prev_ref;      
+      update_displace();
+      Val = last_lit + *ref_it - prev_ref;
     }
     return Val;
   }
 
   LitIt lit_begin, lit_end;
-  RefIt ref_begin, ref_end;
+  RefIt ref_begin;
   size_t lits, copy_len;
   T last_lit, prev_ref;
   std::size_t pos;
+  mutable RefIt ref_it;
+  mutable int displace;
 };
 
 }}
