@@ -77,40 +77,9 @@ include_directories(${Boost_INCLUDE_DIR})
 list(APPEND RLZ_INCLUDE_DIRS "${Boost_INCLUDE_DIR}")
 list(APPEND RLZ_LIBRARIES "${Boost_LIBRARIES}")
 
-# PAPI
-if (RLZ_BENCHMARK)
-	find_package(PAPI REQUIRED)
-	include_directories(${PAPI_INCLUDE_DIRS})
-endif(RLZ_BENCHMARK)
-
 # Libraries
 file(GLOB libraries libs/*.c*)
 add_library(rlz_lib ${libraries})
-
-if (RLZ_BINARIES)
-  # Main executables
-  function(exec_add binary)
-    add_executable(${binary} ${binary}.cpp)
-    target_link_libraries(${binary} rlz_lib sais ${SDSL_LIBRARIES} ${Boost_LIBRARIES} ${ARGN})
-  endfunction()
-
-	if (RLZ_BENCHMARK)
-  	exec_add(benchmark ${PAPI_LIBRARIES})
-	endif(RLZ_BENCHMARK)
-  exec_add(index_check)
-  exec_add(index_decompress)
-  exec_add(index_extract)
-  exec_add(index_stats)
-  exec_add(ms_dump)
-  exec_add(rlzap_build)
-  exec_add(space_breakdown)
-endif(RLZ_BINARIES)
-
-# Testing
-if (RLZ_TESTS)
-  enable_testing()
-  add_subdirectory("tests")
-endif(RLZ_TESTS)
 
 # Export variables
 set(RLZ_INCLUDE_DIRS ${RLZ_INCLUDE_DIRS} CACHE INTERNAL "RLZ include directories")
@@ -119,3 +88,34 @@ list(APPEND RLZ_LIBRARIES "sais")
 list(APPEND RLZ_LIBRARIES "${SDSL_LIBRARIES}")
 set(RLZ_LIBRARIES ${RLZ_LIBRARIES} CACHE INTERNAL "RLZ libraries")
 set(RLZ_LIBRARY_DIRS "${RLZ_LIBRARY_DIRS}" CACHE INTERNAL "RLZ library path")
+
+# PAPI
+if (RLZ_BENCHMARK)
+  find_package(PAPI REQUIRED)
+  include_directories(${PAPI_INCLUDE_DIRS})
+endif(RLZ_BENCHMARK)
+
+# Testing
+if (RLZ_TESTS)
+  enable_testing()
+  add_subdirectory("tests")
+endif(RLZ_TESTS)
+
+if (RLZ_BINARIES)
+  # Main executables
+  function(exec_add binary)
+    add_executable(${binary} ${binary}.cpp)
+    target_link_libraries(${binary} rlz_lib sais ${SDSL_LIBRARIES} ${Boost_LIBRARIES} ${ARGN})
+  endfunction()
+
+  if (RLZ_BENCHMARK)
+    exec_add(benchmark ${PAPI_LIBRARIES})
+  endif(RLZ_BENCHMARK)
+  exec_add(index_check)
+  exec_add(index_decompress)
+  exec_add(index_extract)
+  exec_add(index_stats)
+  exec_add(ms_dump)
+  exec_add(rlzap_build)
+  exec_add(space_breakdown)
+endif(RLZ_BINARIES)
