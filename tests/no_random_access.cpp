@@ -155,7 +155,7 @@ TYPED_TEST(NoRandomAccess, RandomPhraseAccess)
   // Randomly sample the input range, getting a phrase and reading it all.
   // Number of jumps must be not more than the 
   std::default_random_engine rg(42U);
-  std::uniform_int_distribution<std::size_t> dist(0U, input.size());
+  std::uniform_int_distribution<std::size_t> dist(0U, input.size() - 1);
   for (auto i = 0U; i < alpha * input.size(); ++i) {
     using iter = typename decltype(idx)::iter;
     iter beg, middle, end;
