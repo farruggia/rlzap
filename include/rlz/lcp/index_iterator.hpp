@@ -42,18 +42,19 @@ public:
   iterator() 
     : iterator(
         impl::construct{}.get<LitIt>(), impl::construct{}.get<LitIt>(),
-        impl::construct{}.get<RefIt>(), 0UL, 0UL, T{}, T{}
+        impl::construct{}.get<RefIt>(), 0UL, 0UL, 0UL, T{}, T{}
       )
   { }
 
   iterator(
-    LitIt lit_begin, LitIt lit_end, RefIt ref_begin, std::size_t pos, std::size_t copy_len,
+    LitIt lit_begin, LitIt lit_end, RefIt ref_begin, std::size_t phrase_start, std::size_t pos, std::size_t copy_len,
     T last_lit, T prev_ref
   )
     : lit_begin(lit_begin), lit_end(lit_end), ref_begin(ref_begin),
       lits(std::distance(lit_begin, lit_end)), copy_len(copy_len),
-      last_lit(last_lit), prev_ref(prev_ref), pos(pos),
-       ref_it(ref_begin), displace(0)
+      last_lit(last_lit), prev_ref(prev_ref),
+      phrase_start(phrase_start), pos(pos),
+      ref_it(ref_begin), displace(0)
   {
     assert(pos <= lits + copy_len);
   }
@@ -61,6 +62,11 @@ public:
   iterator(RefIt ref_begin, std::size_t end_pos, std::size_t copy_len)
     : iterator(LitIt{}, LitIt{}, ref_begin, end_pos, copy_len, T{}, T{})
   { }
+
+  std::size_t position() const
+  {
+    return phrase_start + pos;
+  }
 
 
 private:
@@ -99,7 +105,7 @@ private:
 
   diff_t distance_to(iterator<T, LitIt, RefIt> const &other) const
   {
-    return static_cast<diff_t>(other.pos) - static_cast<diff_t>(pos);
+    return static_cast<diff_t>(other.position()) - static_cast<diff_t>(position());
   }
 
   void update_displace() const
@@ -126,7 +132,7 @@ private:
   RefIt ref_begin;
   size_t lits, copy_len;
   T last_lit, prev_ref;
-  std::size_t pos;
+  std::size_t phrase_start, pos;
   mutable RefIt ref_it;
   mutable int displace;
 };

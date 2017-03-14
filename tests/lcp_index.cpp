@@ -111,10 +111,10 @@ struct unpack<type_pack<IndexT, LengthT, GetterT>>
 
 template <typename TypeList>
 class LcpIndex : public ::testing::Test {
-  using Index = typename unpack<TypeList>::Index;
   using Length = typename unpack<TypeList>::Length;
   using Getter = typename unpack<TypeList>::Getter;
 public:
+  using Index = typename unpack<TypeList>::Index;
   Index get()
   {
     return Getter{}();
@@ -178,6 +178,88 @@ TYPED_TEST(LcpIndex, Range)
       ));
     }
   }
+}
+
+TYPED_TEST(LcpIndex, Infos)
+{
+  using std::size_t;
+  using iter     = typename LcpIndex<TypeParam>::Index::iter;
+  auto idx       = this->get();
+  auto &input    = this->input();
+  auto phrases   = 0U;
+  auto input_len = 0U;
+  auto check_res = ::testing::AssertionSuccess();
+  bool fail      = false;
+  auto phrase_counter = [&] (
+    size_t phrase_start, size_t lit_len, size_t target, size_t copy_len
+  ) -> void {
+    if (fail) {
+      return;
+    }
+    std::size_t phrase_id;
+    iter begin, cur, end;
+    for (auto i = input_len; i < input_len + lit_len + copy_len; ++i) {
+      phrase_id = idx.phrase_id(i);
+      if (phrase_id != phrases) {
+        fail = true;
+        check_res = ::testing::AssertionFailure() << "index.phrase_id(" << i << ") = "
+                                                  << phrase_id << ", but it should be "
+                                                  << phrases;
+        return;
+      }
+      std::tie(begin, cur, end) = idx.iterator_position(i);
+      if (cur.position() != i) {
+        fail = true;
+        check_res = ::testing::AssertionFailure() << "index.iterator_position(" << i << "): "
+                                                  << "\"current\" iterator reports position " << cur.position() << ", "
+                                                  << "but it should be " << i;
+        return;
+      }
+      if (std::distance(begin, cur) != i - phrase_start) {
+        fail = true;
+        check_res = ::testing::AssertionFailure() << "index.iterator_position(" << i << "): "
+                                                  << "distance between begin and \"current\" iterator is " << std::distance(begin, cur) << ", "
+                                                  << "but it should be " << i - phrase_start;
+        return;
+      }
+      if (std::distance(cur, end) != (phrase_start + lit_len + copy_len) - i) {
+        fail = true;
+        check_res = ::testing::AssertionFailure() << "index.iterator_position(" << i << "): "
+                                                  << "distance between \"current\" and end iterator is " << std::distance(cur, end) << ", "
+                                                  << "but it should be " << i - phrase_start;        
+        return;
+      }
+    }
+    std::tie(begin, end) = idx.iterator_phrase_id(phrase_id);
+    if (begin.position() != phrase_start) {
+      fail = true;
+      check_res = ::testing::AssertionFailure() << "index.iterator_phrase_id(" << phrase_id << "): "
+                                                << "phrase start is reported as " << begin.position() << ", "
+                                                << "but it should be " << phrase_start;
+      return;
+    }
+    if (end.position() != phrase_start + lit_len + copy_len) {
+      fail = true;
+      check_res = ::testing::AssertionFailure() << "index.iterator_phrase_id(" << phrase_id << "): "
+                                                << "phrase start is reported as " << end.position() << ", "
+                                                << "but it should be " << phrase_start + lit_len + copy_len;
+      return;
+    }
+    if (std::distance(begin, end) != lit_len + copy_len) {
+      fail = true;
+      check_res = ::testing::AssertionFailure() << "index.iterator_phrase_id(" << phrase_id << "): "
+                                                << "distance between iterators is " << std::distance(begin, end) << ", "
+                                                << "but it should be " << lit_len + copy_len;
+      return;      
+    }
+    input_len = phrase_start + lit_len + copy_len;
+    ++phrases;
+  };
+  idx.process_parsing(phrase_counter);
+  EXPECT_TRUE(check_res);
+  ASSERT_EQ(input_len, idx.size());
+  ASSERT_EQ(input.size(), input_len);
+  ASSERT_EQ(phrases, idx.phrases());
 }
 
 TYPED_TEST(LcpIndex, Iterator)

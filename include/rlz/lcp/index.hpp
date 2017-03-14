@@ -54,9 +54,9 @@ public:
     while (i != end) {
       std::size_t phrase_start;
       iter it, it_end;
-      std::tie(phrase_start, it, it_end) = get_iterators(parse_iter, ll_iter, la_iter);
+      std::tie(it, it_end) = get_iterators(parse_iter, ll_iter, la_iter);
       
-      std::advance(it, i - phrase_start);
+      std::advance(it, i - it.position());
       auto runs = std::min<std::size_t>(end - i, std::distance(it, it_end));
       it_end = std::next(it, runs);
       while (it != it_end) {
@@ -67,16 +67,6 @@ public:
       la_iter += *ll_iter++;
       i += runs;
     }
-
-    // for (auto i = begin; i != end; ++i) {
-    //   *out++ = *it++;
-    //   if (it == it_end) {
-    //     ++parse_iter;
-    //     la_iter += *ll_iter;
-    //     ++ll_iter;
-    //     std::tie(phrase_start, it, it_end) = get_iterators(parse_iter, ll_iter, la_iter);
-    //   }
-    // }
   }
 
   Symbol operator()(size_t idx) const
@@ -91,20 +81,31 @@ public:
     return to_ret;
   }
 
-  std::tuple<iter, iter, iter> iterator_position(std::size_t pos) const
+  std::size_t phrase_id(std::size_t input_position) const
   {
-    std::size_t phrase, subphrase;
-    std::tie(phrase, subphrase) = parse.phrase_subphrase(pos);
+    return parse.subphrase(input_position);
+  }
+
+  std::tuple<iter, iter> iterator_phrase_id(std::size_t phrase_id_) const
+  {
+    auto subphrase = phrase_id_;
+    auto phrase    = parse.phrase(subphrase);
 
     auto parse_iter = parse.get_iterator(phrase, subphrase);
     auto la_iter    = literals.literal_access(subphrase);
     auto ll_iter    = literals.get_iterator(subphrase);
 
-    std::size_t phrase_start;
     iter beg, end;
-    std::tie(phrase_start, beg, end) = get_iterators(parse_iter, ll_iter, la_iter);
+    std::tie(beg, end) = get_iterators(parse_iter, ll_iter, la_iter);
 
-    return std::make_tuple(beg, std::next(beg, pos - phrase_start), end);
+    return std::make_tuple(beg, end);
+  }
+
+  std::tuple<iter, iter, iter> iterator_position(std::size_t pos) const
+  {
+    iter beg, cur, end;
+    std::tie(beg, end) = iterator_phrase_id(phrase_id(pos));
+    return std::make_tuple(beg, std::next(beg, pos - beg.position()), end);
   }
 
   // Parse functions
@@ -122,6 +123,12 @@ public:
       std::int64_t target = get_target(phrase_start + lit_len, offset);
       f(phrase_start, lit_len, target, phrase_len - lit_len);
     }
+  }
+
+
+  size_t phrases() const
+  {
+    return parse.phrases();
   }
 
   size_t size() const
@@ -217,11 +224,11 @@ public:
   };
 private:
   template <typename ParseIter, typename LiteralLen, typename LiteralAccess>
-  std::tuple<std::size_t, iter, iter> get_iterators(ParseIter parse_iter, LiteralLen ll_iter, LiteralAccess la_iter) const
+  std::tuple<iter, iter> get_iterators(ParseIter parse_iter, LiteralLen ll_iter, LiteralAccess la_iter) const
   {
     if (parse_iter == parse.get_iterator_end()) {
       return std::make_tuple(
-        this->size(), iter(), iter()
+        iter(), iter()
       );
     }
     std::ptrdiff_t offset;
@@ -247,9 +254,8 @@ private:
     }
 
     return std::make_tuple(
-      phrase_start,
-      iter(lit_begin, lit_end, ref_begin, 0UL, copy_len, prev_source, prev_ref),
-      iter(lit_begin, lit_end, ref_begin, phrase_len, copy_len, prev_source, prev_ref)
+      iter(lit_begin, lit_end, ref_begin, phrase_start, 0UL, copy_len, prev_source, prev_ref),
+      iter(lit_begin, lit_end, ref_begin, phrase_start, phrase_len, copy_len, prev_source, prev_ref)
     );
   }
 };

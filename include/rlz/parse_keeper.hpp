@@ -54,10 +54,20 @@ public:
   std::tuple<size_t, size_t> phrase_subphrase(size_t position) const
   {
     // First phrase is NOT marked
-    auto sub = sbv.rank_1(position);
-    auto phr = pbv.rank_1(sub);
+    auto sub = subphrase(position);
+    auto phr = phrase(sub);
     return std::make_tuple(phr, sub);
   }
+
+  size_t subphrase(size_t position) const
+  {
+    return sbv.rank_1(position);
+  }
+
+  size_t phrase(size_t subphrase) const
+  {
+    return pbv.rank_1(subphrase);
+  }  
 
   // Returns the differential pointer associated to the (phrase, subphrase) couple
   ptr_type get_ptr(size_t phrase, size_t subphrase) const
@@ -100,6 +110,12 @@ public:
   size_t length() const
   {
     return sbv.size() - 1; // -1 because of the sentinel
+  }
+
+  // Returns the number of phrases in the parsing
+  size_t phrases() const
+  {
+    return ptrs.size() + diffs.size() - 1U;
   }
 
   size_t serialize(std::ostream& out, sdsl::structure_tree_node* v=nullptr, std::string name="") const
