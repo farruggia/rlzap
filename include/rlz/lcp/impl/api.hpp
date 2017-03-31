@@ -59,7 +59,7 @@ public:
     std::size_t, const SymbolIt, std::size_t junk_len, std::size_t, std::size_t len
   ) override
   {
-    std::min<std::size_t>(junk_len + len, max_len);
+    return std::min<std::size_t>(junk_len + len, max_len);
   }
 
   // Returns true if splitting here allocates an another block.

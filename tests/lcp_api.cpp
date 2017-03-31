@@ -62,6 +62,22 @@ using IndexTypes = ::testing::Types<
 
 TYPED_TEST_CASE(LcpApi, IndexTypes);
 
+template <typename Idx>
+::testing::AssertionResult check_limit(Idx &idx, std::size_t phrase_limit)
+{
+  auto to_ret = ::testing::AssertionSuccess();
+  auto check_func = [&] (std::size_t phrase_start, std::size_t lit_len, std::size_t, std::size_t copy_len) -> void {
+    auto phrase_len = lit_len + copy_len;
+    if (phrase_len > phrase_limit) {
+      to_ret = ::testing::AssertionFailure() << "Length of phrase starting at "<< phrase_start
+                                             << " is of length " << phrase_len
+                                             << " but phrase limit is " << phrase_limit;
+    }
+  };
+  idx.process_parsing(check_func);
+  return to_ret;
+}
+
 TYPED_TEST(LcpApi, Range)
 {
   using ReferenceIt = typename unpack<TypeParam>::ReferenceIt;
@@ -89,8 +105,43 @@ TYPED_TEST(LcpApi, Range)
                 MaxLen
               );
 
+  // Check correctness
   std::vector<LcpType> read(input.size());
   ASSERT_EQ(idx.size(), input.size());
   idx(0UL, input.size(), read.begin());
   ASSERT_EQ(input, read);
+
+  // Check phrase limit
+  EXPECT_TRUE(check_limit(idx, MaxLen));
+}
+
+TYPED_TEST(LcpApi, PhraseLen)
+{
+  using ReferenceIt = typename unpack<TypeParam>::ReferenceIt;
+  using LcpType     = typename unpack<TypeParam>::LcpType;
+  constexpr std::size_t ExplicitBits = unpack<TypeParam>::ExplicitBits();
+  constexpr std::size_t DeltaBits    = unpack<TypeParam>::DeltaBits();
+  constexpr std::size_t MaxLit       = unpack<TypeParam>::MaxLit();
+  constexpr std::size_t SampleInt    = unpack<TypeParam>::SampleInt();
+  constexpr std::size_t MaxLen       = unpack<TypeParam>::MaxLen();
+  constexpr std::size_t DocLen       = unpack<TypeParam>::DocLen();
+
+  std::vector<LcpType> input(DocLen, LcpType{});
+  auto reference = input;
+
+  auto input_begin = input.data();
+  auto input_end   = input.data() + input.size();
+  auto reference_begin = reference.data();
+  auto reference_end   = reference.data() + reference.size();
+
+  auto idx =  rlz::lcp::index_build<
+                LcpType, ExplicitBits, DeltaBits, MaxLit, SampleInt
+              > (
+                input_begin, input_end,
+                reference_begin, reference_end,
+                MaxLen
+              );
+
+  // Check phrase limit
+  EXPECT_TRUE(check_limit(idx, MaxLen));
 }
