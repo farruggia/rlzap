@@ -39,3 +39,18 @@ test_add(LcpIndex lcp_index)
 test_add(Api api)
 test_add(LcpApi lcp_api)
 test_add(NoRandomAccess no_random_access)
+
+# SLA tester
+add_library(sla libs/sla.cpp)
+
+add_executable(sla_create sla_create.cpp)
+target_link_libraries(sla_create sla ${RLZ_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(sla_print sla_print.cpp)
+target_link_libraries(sla_print sla ${RLZ_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(sla_build_index sla_build_index.cpp)
+target_link_libraries(sla_build_index sla ${RLZ_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(sla_test_index sla_test_index.cpp)
+target_link_libraries(sla_test_index sla ${RLZ_LIBRARIES} ${Boost_LIBRARIES})

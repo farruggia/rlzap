@@ -52,7 +52,6 @@ public:
 
     auto i  = begin;
     while (i != end) {
-      std::size_t phrase_start;
       iter it, it_end;
       std::tie(it, it_end) = get_iterators(parse_iter, ll_iter, la_iter);
       

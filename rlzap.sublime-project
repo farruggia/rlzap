@@ -15,8 +15,8 @@
             "${project_folder}/include",
             "${project_folder}/include/rlz",
             "${project_folder}/ext_libs/boost/include",
-            "${project_folder}/sais/include",
-            "${project_folder}/sdsl/include"
+            "${project_folder}/ext_libs/sais/include",
+            "${project_folder}/ext_libs/sdsl/include"
         ]
       },
       "annotations": {
