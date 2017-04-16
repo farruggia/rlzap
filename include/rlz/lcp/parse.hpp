@@ -31,8 +31,10 @@ public:
   { }
 
   // "Automatic" parser
-  parser(std::size_t rlt_bits, std::size_t abs_bits, std::size_t sym_bits) 
-    : parser(rlt_bits, abs_bits, sym_bits, (abs_bits - rlt_bits) / sym_bits, abs_bits / sym_bits)
+  parser(std::size_t rlt_bits, std::size_t abs_bits, std::size_t sym_bits)
+    : parser(
+        rlt_bits, abs_bits, sym_bits, (abs_bits - rlt_bits) / sym_bits, abs_bits / sym_bits
+      )
   { }
 
   // Convenience default constructor
@@ -58,9 +60,11 @@ public:
       "source and reference iterators point to elements of different types"
     );
 
-    auto m_it      = match_begin;                                  // Current input position
-    size_t ref_pos = std::numeric_limits<size_t>::max() - max_lit; // Current reference position by following 
-                                                                   // last absolute ptr
+    // Current input position
+    auto m_it      = match_begin;
+    // Current reference position by following last absolute ptr
+    size_t ref_pos = std::numeric_limits<size_t>::max() - max_lit; 
+
     // Current match is a copy
     auto expl_match = [&ref_pos, &m_it, &copy_func, &match_begin] (
       std::size_t source_pos, std::size_t c_ref_pos, std::size_t length
@@ -86,20 +90,38 @@ public:
       }
     };
 
-    auto extended_match = [&] () -> std::tuple<std::size_t, std::int64_t> {
-      std::tuple<std::size_t, std::int64_t> empty {0UL, 0};
-      if (not std::next(m_it)->matched()) {
-        return empty;
+    auto longest_copy_phrase = [&] () -> std::tuple<std::size_t, std::int64_t> {
+      std::int64_t source_pos = std::distance(match_begin, m_it);
+
+      std::size_t  phrase_len = 0U;
+      std::int64_t phrase_ptr = 0;
+
+      // Try with current match
+      auto source_val = *std::next(source_begin, source_pos);
+      if (m_it->matched() and source_val == *std::next(ref_begin, m_it->ptr)) {
+        phrase_len = m_it->len;
+        phrase_ptr = static_cast<std::int64_t>(m_it->ptr) - source_pos;
       }
-      std::int64_t pos            = std::distance(match_begin, m_it),
-                   next_match_pos = std::next(m_it)->ptr,
-                   next_pos       = pos + 1,
-                   delta          = next_match_pos - next_pos;
-      auto next_source    = *std::next(source_begin, pos);
-      auto next_reference = *std::next(ref_begin, pos + delta);
-      return (next_source == next_reference) 
-              ? std::tuple<std::size_t, std::int64_t>{1UL + std::next(m_it)->len, delta}
-              : empty;
+
+      // Try also with the next match
+      auto match_next = std::next(m_it);
+      if (
+        // There is a "next" position,
+        match_next != match_end and
+        // it is matched,
+        match_next->matched() and
+        // it doesn't point to 0,
+        (match_next->ptr != 0U) and
+        // the current position match with the corresponding reference, and...
+        *std::next(source_begin, source_pos) == *std::next(ref_begin, match_next->ptr - 1) and
+        // ...it is longer than the previous phrase, then that's our phrase
+        match_next->len >= phrase_len
+      ) {
+        phrase_len = 1 + match_next->len;
+        phrase_ptr = static_cast<std::int64_t>(match_next->ptr) - (source_pos + 1);
+      }
+
+      return std::make_tuple(phrase_len, phrase_ptr);
     };
 
     // Pointer is relative?
@@ -113,7 +135,7 @@ public:
       if (m_it == s_it) {
         std::size_t  ext_length;
         std::int64_t ext_delta;
-        std::tie(ext_length, ext_delta) = extended_match();
+        std::tie(ext_length, ext_delta) = longest_copy_phrase();
         auto source_pos = std::distance(match_begin, m_it);
         if (ext_length > min_rel and is_delta(c_ref_pos, source_pos + ext_delta)) {
           if (apply) {
@@ -149,20 +171,19 @@ public:
 
     // Relative match
     auto relative_match = [&] () -> void {
-      {
-        std::size_t  ext_length;
-        std::int64_t ext_delta;
-        std::tie(ext_length, ext_delta) = extended_match();
-        auto pos = std::distance(match_begin, m_it);
-        if (
-          ext_length >= min_abs or 
-          (ext_length > 0 and delta_match(std::next(m_it, ext_length), pos + ext_length, false))
-        ) {
-            ref_pos = pos + ext_delta;
-            expl_match(pos, pos + ext_delta, ext_length);
-            return;        
-        }        
+      std::size_t ext_length;
+      std::int64_t ext_delta;
+      std::tie(ext_length, ext_delta) = longest_copy_phrase();
+      auto pos = std::distance(match_begin, m_it);
+      if (
+        ext_length >= min_abs or
+        (ext_length > 0 and delta_match(std::next(m_it, ext_length), pos + ext_length, false))
+      ) {
+          ref_pos = pos + ext_delta;
+          expl_match(pos, pos + ext_delta, ext_length);
+          return;
       }
+
       for (auto s_it = std::next(m_it); s_it != match_end; ++s_it) {
         if (is_relative(s_it)) {
           ref_pos = s_it->ptr;

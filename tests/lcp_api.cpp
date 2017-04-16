@@ -1,5 +1,7 @@
 #include <lcp/api.hpp>
 
+#include <numeric>
+
 #include "include/parse_coord_common.hpp"
 #include "main.hpp"
 
@@ -144,4 +146,76 @@ TYPED_TEST(LcpApi, PhraseLen)
 
   // Check phrase limit
   EXPECT_TRUE(check_limit(idx, MaxLen));
+}
+
+template <typename TypeParam>
+::testing::AssertionResult input_runs(unsigned int input_start, unsigned int ref_start)
+{
+  using ReferenceIt = typename unpack<TypeParam>::ReferenceIt;
+  using LcpType     = typename unpack<TypeParam>::LcpType;
+  constexpr std::size_t ExplicitBits = unpack<TypeParam>::ExplicitBits();
+  constexpr std::size_t DeltaBits    = unpack<TypeParam>::DeltaBits();
+  constexpr std::size_t MaxLit       = unpack<TypeParam>::MaxLit();
+  constexpr std::size_t SampleInt    = unpack<TypeParam>::SampleInt();
+  constexpr std::size_t MaxLen       = unpack<TypeParam>::MaxLen();
+  constexpr std::size_t DocLen       = unpack<TypeParam>::DocLen();
+
+  std::vector<LcpType> input(DocLen), reference(DocLen);
+  std::iota(input.begin(), input.end(), input_start);
+  std::iota(reference.begin(), reference.end(), ref_start);
+
+  auto input_begin     = input.data();
+  auto input_end       = input.data() + input.size();
+  auto reference_begin = reference.data();
+  auto reference_end   = reference.data() + reference.size();
+
+  auto idx =  rlz::lcp::index_build<
+                LcpType, ExplicitBits, DeltaBits, MaxLit, SampleInt
+              > (
+                input_begin, input_end,
+                reference_begin, reference_end,
+                MaxLen
+              );
+
+  // auto F = [] (
+  //     std::size_t phrase_start, std::size_t lit_len, std::size_t target, std::size_t copy_len
+  //   ) {
+  //     if (lit_len > 0) {
+  //       std::cout << "L(" << lit_len << "): "
+  //                 << phrase_start << " -> " << (phrase_start + lit_len)
+  //                 << std::endl;
+  //       phrase_start += lit_len;        
+  //     }
+  //     if (copy_len > 0) {
+  //       std::cout << "C(" << copy_len << "): "
+  //                 << phrase_start << " -> " << (phrase_start + copy_len)
+  //                 << " @ " << target
+  //                 << std::endl;
+  //     }
+  // };
+  // idx.process_parsing(F);
+
+  // Check phrase limit
+  auto check_ass = check_limit(idx, MaxLen);
+  if (check_ass != ::testing::AssertionSuccess()) {
+    return check_ass;
+  }
+
+  // Check if decompress properly
+  auto got = idx(0U, input.size());
+  if (got != input) {
+    return ::testing::AssertionFailure() << "Input and reference differ";
+  }
+  return ::testing::AssertionSuccess();
+}
+
+
+TYPED_TEST(LcpApi, SplitNoCompulsoryLiteral)
+{
+  EXPECT_TRUE(input_runs<TypeParam>(0U, 0U));
+}
+
+TYPED_TEST(LcpApi, SplitCompulsoryLiteral)
+{
+  EXPECT_TRUE(input_runs<TypeParam>(0U, 1U));
 }

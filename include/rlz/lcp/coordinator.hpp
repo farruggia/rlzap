@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <tuple>
 #include <vector>
@@ -108,11 +109,33 @@ private:
       : source(source), length(length) { }
     literal() : literal(0U, 0U) { }
   };
+
+  struct commit_frame {
+    std::size_t source_start;
+    std::size_t literal_len;
+    std::size_t target;
+    std::size_t copy_length;
+
+    commit_frame(
+      std::size_t source_start, std::size_t literal_len, std::size_t target, std::size_t copy_length
+    ) : source_start(source_start),
+        literal_len(literal_len),
+        target(target),
+        copy_length(copy_length)
+    { }
+
+    std::tuple<std::size_t, std::size_t, std::size_t, std::size_t> tuple()
+    {
+      return std::make_tuple(source_start, literal_len, target, copy_length);
+    }
+  };
+
   std::vector<std::shared_ptr<observer<Alphabet, SymbolIt>>> components;
   SymbolIt text;
   RefIt    reference;
   std::tuple<bool, literal> previous;
   std::size_t committed_position;
+  std::deque<commit_frame> Q;
 
   bool previous_is_literal()
   {
@@ -136,62 +159,73 @@ private:
 
   void commit(std::size_t source_start, std::size_t literal_len, std::size_t target, std::size_t copy_length)
   {
-    // Get minimum length
-    auto literal_start = std::next(text, source_start);
-    std::size_t candidate = copy_length + literal_len, original_phrase = candidate;
-    for (auto &i : components) {
-      candidate = std::min(
-        candidate,
-        i->can_split(source_start, literal_start, literal_len, target, copy_length)
-      );
-    }
+    Q.push_back(commit_frame{source_start, literal_len, target, copy_length});
+    commit();
+  }
 
-    // Get phrase to be committed
-    assert(candidate > 0U and candidate <= original_phrase);
-    std::size_t commit_copy, commit_literal;
-    if (candidate < literal_len) {
-      commit_literal = candidate;
-      commit_copy    = 0U;
-    } else {
-      commit_literal  = literal_len;
-      commit_copy     = candidate - commit_literal;
-    }
+  void commit()
+  {
+    while (not Q.empty()) {
+      std::size_t source_start, literal_len, target, copy_length;
+      std::tie(source_start, literal_len, target, copy_length) = Q.front().tuple();
+      Q.pop_front();
+      // Get minimum length
+      auto literal_start = std::next(text, source_start);
+      std::size_t candidate = copy_length + literal_len, original_phrase = candidate;
+      for (auto &i : components) {
+        candidate = std::min(
+          candidate,
+          i->can_split(source_start, literal_start, literal_len, target, copy_length)
+        );
+      }
 
-    // New block?
-    bool is_block = false;
-    for (auto &i : components) {
-      is_block = is_block or i->split_as_block(
-        source_start, literal_start, commit_literal,
-        target, commit_copy
-      );
-    }
-
-    // Commit that phrase
-    for (auto &i : components) {
-      i->split(
-        source_start, literal_start, commit_literal,
-        target, commit_copy,
-        is_block
-      );
-    }
-    committed_position += commit_copy + commit_literal;
-
-    // Handles the remaining part, if any
-    if (candidate < original_phrase) {
-      // Chopping literals or copy-lengths?
-      if (literal_len > commit_literal) {
-        auto left_lit  = literal_len - commit_literal;
-        commit(committed_position, left_lit, target, copy_length);
+      // Get phrase to be committed
+      assert(candidate > 0U and candidate <= original_phrase);
+      std::size_t commit_copy, commit_literal;
+      if (candidate < literal_len) {
+        commit_literal = candidate;
+        commit_copy    = 0U;
       } else {
-        // Should we introduce a "compulsory literal" here?
-        std::ptrdiff_t delta = target - (source_start + literal_len);
-        auto source_sym = *std::next(text, committed_position);
-        auto ref_sym    = *std::next(reference, committed_position + delta);
-        auto left_copy = copy_length - commit_copy;
-        if (source_sym == ref_sym) { // Nope
-          commit(committed_position, 0UL, target + commit_copy, left_copy);
-        } else { // Yes
-          commit(committed_position, 1UL, target + commit_copy + 1, left_copy - 1);
+        commit_literal  = literal_len;
+        commit_copy     = candidate - commit_literal;
+      }
+
+      // New block?
+      bool is_block = false;
+      for (auto &i : components) {
+        is_block = is_block or i->split_as_block(
+          source_start, literal_start, commit_literal,
+          target, commit_copy
+        );
+      }
+
+      // Commit that phrase
+      for (auto &i : components) {
+        i->split(
+          source_start, literal_start, commit_literal,
+          target, commit_copy,
+          is_block
+        );
+      }
+      committed_position += commit_copy + commit_literal;
+
+      // Handles the remaining part, if any
+      if (candidate < original_phrase) {
+        // Chopping literals or copy-lengths?
+        if (literal_len > commit_literal) {
+          auto left_lit  = literal_len - commit_literal;
+          Q.push_back(commit_frame{committed_position, left_lit, target, copy_length});
+        } else {
+          // Should we introduce a "compulsory literal" here?
+          auto new_target = target + commit_copy;
+          auto source_sym = *std::next(text, committed_position);
+          auto ref_sym    = *std::next(reference, new_target);
+          auto new_len    = copy_length - commit_copy;
+          if (source_sym == ref_sym) { // Nope
+            Q.push_back(commit_frame{committed_position, 0UL, new_target, new_len});
+          } else { // Yes
+            Q.push_back(commit_frame{committed_position, 1UL, new_target + 1, new_len - 1});
+          }
         }
       }
     }
