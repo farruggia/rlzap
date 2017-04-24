@@ -11,9 +11,9 @@ namespace rlz { namespace lcp {
 namespace impl {
 
 // Workaround for sdsl::random_access_const_iterator not having a default constructor.
-struct construct {  
+struct construct {
   template <typename T>
-  typename std::enable_if<std::is_default_constructible<T>::value, T >::type get() 
+  typename std::enable_if<std::is_default_constructible<T>::value, T >::type get()
   {
     return T{};
   }
@@ -39,7 +39,7 @@ class iterator : public boost::iterators::iterator_facade<
 {
 public:
 
-  iterator() 
+  iterator()
     : iterator(
         impl::construct{}.get<LitIt>(), impl::construct{}.get<LitIt>(),
         impl::construct{}.get<RefIt>(), 0UL, 0UL, 0UL, T{}, T{}
@@ -54,9 +54,12 @@ public:
       lits(std::distance(lit_begin, lit_end)), copy_len(copy_len),
       last_lit(last_lit), prev_ref(prev_ref),
       phrase_start(phrase_start), pos(pos),
-      ref_it(ref_begin), displace(0)
+      ref_it(ref_begin)
   {
     assert(pos <= lits + copy_len);
+    if (pos > lits) {
+      std::advance(ref_it, pos - lits);
+    }
   }
 
   iterator(RefIt ref_begin, std::size_t end_pos, std::size_t copy_len)
@@ -86,21 +89,30 @@ private:
   {
     assert(pos < lits + copy_len);
     ++pos;
+    if (pos > lits) {
+      ++ref_it;
+    }
   }
 
   void decrement()
   {
     assert(pos > 1);
+    if (pos > lits) {
+      --ref_it;
+    }
     --pos;
   }
 
   void advance(diff_t n)
   {
     assert(
-      (n <= 0 and pos >= static_cast<std::size_t>(-n)) or 
+      (n <= 0 and pos >= static_cast<std::size_t>(-n)) or
       (n > 0  and pos + n <= lits + copy_len)
     );
+    diff_t old_displace = std::max(pos, lits);
     pos += n;
+    diff_t displace = std::max(pos, lits);
+    std::advance(ref_it, displace - old_displace);
   }
 
   diff_t distance_to(iterator<T, LitIt, RefIt> const &other) const
@@ -108,21 +120,11 @@ private:
     return static_cast<diff_t>(other.position()) - static_cast<diff_t>(position());
   }
 
-  void update_displace() const
-  {
-    if (pos >= lits) {
-      auto old_displace = displace;
-      displace = pos - lits;
-      std::advance(ref_it, displace - old_displace);      
-    }
-  }
-
   const T &dereference() const
   {
     if (pos < lits) {
       Val = *std::next(lit_begin, pos);
     } else {
-      update_displace();
       Val = last_lit + *ref_it - prev_ref;
     }
     return Val;
@@ -133,8 +135,7 @@ private:
   size_t lits, copy_len;
   T last_lit, prev_ref;
   std::size_t phrase_start, pos;
-  mutable RefIt ref_it;
-  mutable int displace;
+  RefIt ref_it;
 };
 
 }}
