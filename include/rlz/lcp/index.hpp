@@ -239,7 +239,9 @@ private:
     
     auto target = get_target(phrase_start + lit_len, offset);
 
-    auto ref_begin = std::next(source.begin(), target);
+    auto ref_begin = (lit_len == phrase_len)
+                      ? source.begin()
+                      : std::next(source.begin(), target);
     auto copy_len  = phrase_len - lit_len;
 
     Symbol prev_ref, prev_source;
