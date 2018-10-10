@@ -58,6 +58,7 @@ All the functionalities provided by this project are exposed through an API. Con
 ### Compilation options
 
 The `CMakeLists` defines a list of build options:
-* `RLZ_BINARIES`: enables or disables generating the binaries. `ON` by default, turn it `OFF` if building RLZAP as a library.
+* `RLZ_BINARIES`: enables or disables generating the binaries. `OFF` by default, turn it `ON` to generate the binaries.
 * `RLZ_BENCHMARK`: if `RLZ_BINARIES` is `ON`, builds the `benchmark` utility. Needs libPAPI as an external library.
 * `RLZ_TESTS`: builds the unit tests.
+* `RLZ_USE_EXTERNAL_SDSL`: use external SDSL library found using `pkg-config`. `ON` by default, set `OFF` to use the SDSL shipped as a submodule.
