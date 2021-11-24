@@ -15,7 +15,6 @@ option(BUILD_DIVSUFSORT64       "Enable divsufsort64"                       ON)
 
 # Useful modules
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
-include(Cpp11)
 include(NinjaColorFix)
 include(ReleaseDefault)
 include(submodules)
